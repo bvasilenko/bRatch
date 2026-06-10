@@ -1,0 +1,28 @@
+[package]
+name = "bratch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Prompt lookup tool. Agent names a regression signature from a fixed list; bratch returns the prompt for that regression signature. The prompt tells the agent how to check the diff against a baseline for that regression."
+repository.workspace = true
+readme = "../../README.md"
+
+[lib]
+name = "bratch"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bratch"
+path = "src/main.rs"
+
+[dependencies]
+bsuite-core = { git = "https://github.com/bvasilenko/bsuite-core", rev = "b03b14a9e8176d5862509aa86cb5273dec7df845" }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+thiserror.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+proptest.workspace = true
+serde_json.workspace = true

@@ -1,5 +1,4 @@
 target/
-Cargo.lock
 node_modules/
 .github/docs/TODO.md
 contribot.config.*.json
