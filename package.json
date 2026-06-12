@@ -1,0 +1,27 @@
+{
+  "name": "@booga/bratch",
+  "version": "0.1.1",
+  "description": "Prompt lookup tool. Agent names a regression signature from a fixed list; bratch returns the prompt for that regression signature. The prompt tells the agent how to check the diff against a baseline for that regression.",
+  "bin": {
+    "bratch": "./bin/bratch.js"
+  },
+  "files": [
+    "bin",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node ./bin/install.js"
+  },
+  "keywords": [
+    "cli",
+    "agent",
+    "prompt",
+    "lookup"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bvasilenko/bRatch.git"
+  }
+}
