@@ -1,5 +1,8 @@
 # bratch
 
+For agents that risk regressing prior work. bratch reads a revision pair (the change about to be made vs the prior baseline) against a regression-signature taxonomy and emits a tri-state verdict: HISTORICAL-BUG (this change matches a pattern that broke things before), CLEAN, or MALFORMED. The signature taxonomy is closed (9 variants at v0.1); the prompt library evolves continuously via empirical-lift evaluation, so the same `bratch verify` invocation gets stricter at catching regression-signatures as the corpus matures.
+
+
 Prompt lookup tool. Agent names a regression signature from a fixed list; bratch returns the prompt for that regression signature. The prompt tells the agent how to check the diff against a baseline for that regression.
 
 Built for agentic loops. Reads a diff buffer, matches against a closed regression-signature taxonomy, writes a verdict directive on stdout, exits with a discriminating code so the calling agent can branch on whether a regression was found.
