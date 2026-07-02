@@ -14,6 +14,8 @@ pub enum BratchError {
     RevisionIdPairMalformed(String),
     #[error("unknown invocation surface: {0}")]
     InvocationSurfaceUnknown(String),
+    #[error("corpus load failed: {0}")]
+    CorpusLoad(String),
     #[error("{0}")]
     Usage(String),
     #[error(transparent)]
@@ -21,21 +23,34 @@ pub enum BratchError {
 }
 
 impl BratchError {
-    pub const fn exit_code(&self) -> bsuite_core::ExitCode {
-        match self {
-            Self::Usage(_) => bsuite_core::ExitCode::Usage,
+    pub const fn is_malformed_input(&self) -> bool {
+        matches!(
+            self,
             Self::DiffSliceInvalid(_)
-            | Self::HistoryRefInvalid(_)
-            | Self::TaxonomyUnknown(_)
-            | Self::VerdictClassUnknown(_)
-            | Self::RevisionIdPairMalformed(_)
-            | Self::InvocationSurfaceUnknown(_)
-            | Self::Core(_) => bsuite_core::ExitCode::InternalError,
+                | Self::HistoryRefInvalid(_)
+                | Self::TaxonomyUnknown(_)
+                | Self::Usage(_)
+        )
+    }
+
+    pub const fn exit_code(&self) -> bsuite_core::ExitCode {
+        if self.is_malformed_input() {
+            bsuite_core::ExitCode::Usage
+        } else {
+            bsuite_core::ExitCode::InternalError
         }
     }
 
     pub fn process_exit_code(&self) -> std::process::ExitCode {
         process_exit_code(self.exit_code())
+    }
+
+    pub fn into_core(self) -> bsuite_core::BsuiteCoreError {
+        match self {
+            Self::Core(e) => e,
+            Self::CorpusLoad(msg) => bsuite_core::BsuiteCoreError::CorpusDeserializationFailed(msg),
+            other => bsuite_core::BsuiteCoreError::PromptResolution(other.to_string()),
+        }
     }
 }
 

@@ -1,97 +1,37 @@
-use assert_cmd::Command;
+mod common;
+
 use bratch::RegressionSignature;
+use bsuite_core::ExitCode;
+use common::{bratch_command, command_stdout, compare_stdout};
 use predicates::prelude::*;
 
-const PLACEHOLDER_DIRECTIVE_HEADER: &str = "[bratch placeholder directive - pre-corpus output]";
-const ACTION_PREFIX: &str = "ACTION: This invocation reached bratch";
-const EXIT_CODE_FOOTER: &str = "Exit code carries the verdict-class signal.";
-const PUBLIC_INVOCATION_SURFACE_LINE: &str = "Invocation surface: cli.";
-const PLACEHOLDER_SIGNATURE_VARIANT: &str = "TestAssertionWeakened";
+const CORPUS_DIRECTIVE_PREFIX: &str = "REGRESSION-DETECTED:";
 const INTERNAL_SURFACE_TOKENS: [&str; 6] = ["L2a", "L2b", "L2c", "l2a", "l2b", "l2c"];
-const COMPARE_FINDING_EXIT_CODE: i32 = 1;
-
-#[derive(Debug, Clone, Copy)]
-struct CompareCase<'a> {
-    args: &'a [&'a str],
-    expected_input: &'a str,
-}
-
-impl CompareCase<'_> {
-    fn assert(self) {
-        let stdout = compare_stdout(self.args);
-
-        assert_compare_directive(&stdout);
-        assert!(
-            stdout.contains(self.expected_input),
-            "stdout missing {expected:?}: {stdout}",
-            expected = self.expected_input
-        );
-    }
-}
-
-fn bratch_command() -> Command {
-    Command::cargo_bin("bratch").expect("binary exists")
-}
-
-fn command_stdout_with_code(args: &[&str], code: i32) -> String {
-    let output = bratch_command()
-        .args(args)
-        .assert()
-        .code(code)
-        .get_output()
-        .clone();
-
-    String::from_utf8(output.stdout).expect("stdout is utf8")
-}
-
-fn compare_stdout(args: &[&str]) -> String {
-    command_stdout_with_code(args, COMPARE_FINDING_EXIT_CODE)
-}
-
-fn successful_stdout(args: &[&str]) -> String {
-    command_stdout_with_code(args, 0)
-}
 
 fn assert_usage_failure(args: &[&str], stderr_fragment: &str) {
     bratch_command()
         .args(args)
         .assert()
-        .code(64)
+        .code(ExitCode::Usage.as_i32())
         .stderr(predicate::str::contains(stderr_fragment));
 }
 
-fn assert_compare_directive(stdout: &str) {
-    assert!(stdout.contains(PLACEHOLDER_DIRECTIVE_HEADER));
-    assert!(stdout.contains("Parsed input: diff="));
-    assert!(stdout.contains("history="));
+fn assert_corpus_directive(stdout: &str, signature: &str) {
     assert!(
-        stdout.contains(&format!(
-            "RegressionSignature::{PLACEHOLDER_SIGNATURE_VARIANT}"
-        )),
-        "routing key must name the specific placeholder variant {PLACEHOLDER_SIGNATURE_VARIANT:?}: {stdout}"
+        stdout.contains(CORPUS_DIRECTIVE_PREFIX),
+        "directive must contain {CORPUS_DIRECTIVE_PREFIX:?}: {stdout}"
     );
-    assert!(stdout.contains(" placeholder route."));
-    assert!(stdout.contains(PUBLIC_INVOCATION_SURFACE_LINE));
-    assert!(stdout.contains("Verdict-state: regression-detected."));
-    assert!(stdout.contains(ACTION_PREFIX));
-    assert!(stdout.contains("regression signature "));
     assert!(
-        stdout.contains(PLACEHOLDER_SIGNATURE_VARIANT),
-        "ACTION paragraph must name the placeholder signature variant: {stdout}"
+        stdout.contains(signature),
+        "directive must name {signature:?}: {stdout}"
     );
-    assert!(stdout.contains(EXIT_CODE_FOOTER));
-    assert!(!stdout.contains("detection behavior is deferred"));
-    assert_no_internal_surface_tokens(stdout);
-}
-
-fn assert_no_internal_surface_tokens(stdout: &str) {
+    assert!(
+        !stdout.contains("placeholder directive"),
+        "corpus-backed directive must not reference placeholder: {stdout}"
+    );
     for token in INTERNAL_SURFACE_TOKENS {
         assert!(!stdout.contains(token), "stdout leaked {token}: {stdout}");
     }
-}
-
-fn deferred_command_output(command_name: &str) -> String {
-    format!("bratch {command_name} placeholder: behavior is deferred.\n")
 }
 
 #[test]
@@ -107,7 +47,7 @@ fn help_exits_successfully() {
 
 #[test]
 fn signatures_exits_successfully_and_prints_exact_closed_set() {
-    let stdout = successful_stdout(&["signatures"]);
+    let stdout = command_stdout(&["signatures"], ExitCode::Success);
     let actual = stdout.lines().collect::<Vec<_>>();
     let expected = RegressionSignature::ALL
         .iter()
@@ -118,69 +58,39 @@ fn signatures_exits_successfully_and_prints_exact_closed_set() {
 }
 
 #[test]
-fn compare_emits_placeholder_directive_and_finding_exit_code() {
-    CompareCase {
-        args: &["compare", "--reason", "review requested"],
-        expected_input: "diff=<none>, history=<none>",
+fn compare_emits_distinct_directive_for_every_signature() {
+    for signature in RegressionSignature::ALL {
+        let stdout = compare_stdout(signature.stable_name(), &[]);
+        assert_corpus_directive(&stdout, signature.stable_name());
     }
-    .assert();
 }
 
 #[test]
-fn compare_directive_reports_every_supported_input_combination() {
-    for compare_case in [
-        CompareCase {
-            args: &["compare"],
-            expected_input: "diff=<none>, history=<none>",
-        },
-        CompareCase {
-            args: &["compare", "--diff", "change.diff"],
-            expected_input: "diff=change.diff, history=<none>",
-        },
-        CompareCase {
-            args: &["compare", "--history", "main"],
-            expected_input: "diff=<none>, history=main",
-        },
-        CompareCase {
-            args: &["compare", "--manifest", "manifest.json"],
-            expected_input: "diff=<none>, history=<none>",
-        },
-        CompareCase {
-            args: &["compare", "--diff", "change.diff", "--history", "main"],
-            expected_input: "diff=change.diff, history=main",
-        },
-        CompareCase {
-            args: &["compare", "--history", "v1.0.0..v2.0.0"],
-            expected_input: "diff=<none>, history=v1.0.0..v2.0.0",
-        },
+fn compare_accepts_supported_input_flags() {
+    for extra_args in [
+        &[][..],
+        &["--diff", "change.diff"][..],
+        &["--history", "main"][..],
+        &["--manifest", "manifest.json"][..],
+        &["--diff", "change.diff", "--history", "main"][..],
     ] {
-        compare_case.assert();
+        let stdout = compare_stdout("null-check-removed", extra_args);
+        assert_corpus_directive(&stdout, "null-check-removed");
     }
 }
 
 #[test]
 fn compare_quiet_and_json_flags_keep_directive_stdout() {
-    for compare_case in [
-        CompareCase {
-            args: &["compare", "--quiet", "--reason", "review requested"],
-            expected_input: "diff=<none>, history=<none>",
-        },
-        CompareCase {
-            args: &["compare", "--json", "--reason", "review requested"],
-            expected_input: "diff=<none>, history=<none>",
-        },
-        CompareCase {
-            args: &[
-                "compare",
-                "--quiet",
-                "--json",
-                "--reason",
-                "review requested",
-            ],
-            expected_input: "diff=<none>, history=<none>",
-        },
+    for extra_args in [
+        &["--quiet"][..],
+        &["--json"][..],
+        &["--quiet", "--json"][..],
     ] {
-        compare_case.assert();
+        let stdout = compare_stdout("null-check-removed", extra_args);
+        assert!(
+            stdout.contains("null-check-removed"),
+            "directive must name signature: {stdout}"
+        );
     }
 }
 
@@ -188,9 +98,15 @@ fn compare_quiet_and_json_flags_keep_directive_stdout() {
 fn compare_rejects_blank_reason() {
     for blank_reason in ["", " ", "   ", "\t", "\n"] {
         bratch_command()
-            .args(["compare", "--reason", blank_reason])
+            .args([
+                "compare",
+                "--signature",
+                "null-check-removed",
+                "--reason",
+                blank_reason,
+            ])
             .assert()
-            .code(64)
+            .code(ExitCode::Usage.as_i32())
             .stderr(predicate::str::contains("reason must not be empty"));
     }
 }
@@ -202,21 +118,48 @@ fn compare_accepts_every_non_blank_reason_shape() {
         " review requested ",
         "review\trequested",
     ] {
-        CompareCase {
-            args: &["compare", "--reason", reason],
-            expected_input: "diff=<none>, history=<none>",
-        }
-        .assert();
+        let stdout = compare_stdout("null-check-removed", &["--reason", reason]);
+        assert_corpus_directive(&stdout, "null-check-removed");
     }
 }
 
 #[test]
-fn placeholder_commands_exit_successfully_with_stable_output() {
-    for command_name in ["update", "init", "tail", "explain"] {
-        let stdout = successful_stdout(&[command_name]);
+fn compare_rejects_unknown_signature() {
+    assert_usage_failure(
+        &["compare", "--signature", "unknown-signature"],
+        "unknown regression signature",
+    );
+}
 
-        assert_eq!(deferred_command_output(command_name), stdout);
+#[test]
+fn compare_rejects_missing_or_blank_signature() {
+    for (args, stderr_fragment) in [
+        (&["compare"][..], "required arguments were not provided"),
+        (
+            &["compare", "--signature", ""][..],
+            "unknown regression signature",
+        ),
+        (
+            &["compare", "--signature", " null-check-removed"][..],
+            "unknown regression signature",
+        ),
+        (
+            &["compare", "--signature", "null-check-removed "][..],
+            "unknown regression signature",
+        ),
+    ] {
+        assert_usage_failure(args, stderr_fragment);
     }
+}
+
+#[test]
+fn compare_json_flag_with_malformed_signature_routes_to_stderr() {
+    bratch_command()
+        .args(["compare", "--signature", "not-a-valid-type", "--json"])
+        .assert()
+        .code(ExitCode::Usage.as_i32())
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("unknown regression signature"));
 }
 
 #[test]
@@ -227,9 +170,23 @@ fn unknown_command_uses_cli_usage_failure() {
 #[test]
 fn malformed_flag_shape_uses_cli_usage_failure() {
     for (args, stderr_fragment) in [
-        (&["compare", "--reason"][..], "a value is required"),
-        (&["compare", "--unknown"][..], "unexpected argument"),
-        (&["compare", "--json=false"][..], "unexpected value"),
+        (
+            &["compare", "--signature", "null-check-removed", "--reason"][..],
+            "a value is required",
+        ),
+        (
+            &["compare", "--signature", "null-check-removed", "--unknown"][..],
+            "unexpected argument",
+        ),
+        (
+            &[
+                "compare",
+                "--signature",
+                "null-check-removed",
+                "--json=false",
+            ][..],
+            "unexpected value",
+        ),
     ] {
         assert_usage_failure(args, stderr_fragment);
     }

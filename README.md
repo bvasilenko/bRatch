@@ -27,21 +27,12 @@ cargo install --git https://github.com/bvasilenko/bRatch
 ## Use
 
 ```sh
-bratch compare --diff ./PR-feature-x.diff
-# stdout: [bratch placeholder directive - pre-corpus output] ...
-# exit: 1
-
-bratch compare --diff ./PR-feature-x.diff --history main
-# stdout: [bratch placeholder directive - pre-corpus output] ...
+bratch compare --signature null-check-removed --diff ./PR-feature-x.diff
+# stdout: REGRESSION-DETECTED: null-check-removed. ...
 # exit: 1
 ```
 
 Optional flags: `--diff <path>`, `--history <path-or-name>`, `--manifest <path>`, `--json`, `--quiet`, `--reason <text>`. Subcommands consume the same flag set; defaults are sane.
-
-> **WARNING - pre-corpus build**: In this release `bratch compare` exits with code `1`
-> regardless of the actual diff content. The directive on stdout is a placeholder.
-> Do not wire `bratch compare` into a gating CI step until the corpus-backed release lands.
-> Every invocation will appear as a regression finding.
 
 ## Regression-signature taxonomy
 
@@ -53,6 +44,16 @@ Closed `RegressionSignature` enum. The taxonomy is fixed at this version; wideni
 | CMS-context | `brand-voice-loosened`, `banned-term-re-introduced`, `disclosure-line-deleted`, `approved-fact-replaced` |
 
 `bratch signatures` prints the full list.
+
+The v0 corpus shipped with this release is hand-authored fixture material. An empirically evolved corpus ships in a later cycle; upgrading is handled automatically via `bratch update` once the signed-manifest endpoint is live.
+
+## Configuration
+
+| Environment variable | Purpose | Default |
+|---|---|---|
+| `BSUITE_UPDATE_BASE_URL` | Base URL for the `bratch update` manifest fetch | `https://updates.example.invalid/bratch/v1` (deliberately non-resolving; production URL ships with the first signed-manifest release) |
+| `BSUITE_TRANSCRIPT_DIR` | Override the per-OS default transcript directory | OS default (Linux: `$XDG_STATE_HOME`; macOS: `~/Library/Application Support`; Windows: `%LOCALAPPDATA%`) |
+| `BSUITE_TRANSCRIPT_RETENTION_DAYS` | Days of transcript history to retain | `90` |
 
 ## License
 

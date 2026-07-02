@@ -30,7 +30,17 @@ fn revision_id_pair_display_round_trips() {
 
 #[test]
 fn revision_id_pair_rejects_malformed_inputs() {
-    for malformed in ["", "abc", "abc..def..ghi", "..def", "abc..", ".."] {
+    for malformed in [
+        "",
+        "abc",
+        "abc..def..ghi",
+        "..def",
+        "abc..",
+        "..",
+        "abc...def",
+        "HEAD...main",
+        "a...b",
+    ] {
         assert!(
             RevisionIdPair::from_str(malformed).is_err(),
             "expected rejection of {malformed:?} but it was accepted"

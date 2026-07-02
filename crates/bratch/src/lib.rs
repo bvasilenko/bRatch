@@ -1,8 +1,10 @@
 pub mod cli;
 pub mod compare;
+pub mod corpus_index;
 pub mod error;
 pub mod substrate_input;
 pub mod taxonomy;
+pub mod update;
 pub mod verdict_class;
 
 pub use cli::{BratchCli, Command, CompareArgs};

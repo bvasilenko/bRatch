@@ -28,6 +28,10 @@ impl FromStr for RevisionIdPair {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let malformed = || BratchError::RevisionIdPairMalformed(value.to_owned());
 
+        if value.contains("...") {
+            return Err(malformed());
+        }
+
         let (baseline_raw, candidate_raw) = value.split_once("..").ok_or_else(malformed)?;
 
         if baseline_raw.is_empty() || candidate_raw.is_empty() {

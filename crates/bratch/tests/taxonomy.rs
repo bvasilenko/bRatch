@@ -44,5 +44,14 @@ fn signature_rejects_names_outside_closed_set() {
         "null-check",
         "regression",
         "brand-voice",
+        "0",
+        "42",
+        "null-check-1",
+        "null-check-removed-v2",
+        "null-check-removed!",
+        "null-check-removed@brand",
+        "null check removed",
+        "NULL-CHECK-REMOVED",
+        "Null-Check-Removed",
     ]);
 }

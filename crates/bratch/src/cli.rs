@@ -1,6 +1,5 @@
-use crate::{BratchError, RegressionSignature, compare};
 use clap::{Parser, Subcommand};
-use std::{path::PathBuf, process::ExitCode};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "bratch")]
@@ -9,7 +8,7 @@ use std::{path::PathBuf, process::ExitCode};
 )]
 pub struct BratchCli {
     #[command(subcommand)]
-    command: Command,
+    pub command: Command,
 }
 
 #[derive(Debug, Subcommand)]
@@ -22,8 +21,10 @@ pub enum Command {
     Explain,
 }
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, Clone, Eq, PartialEq, clap::Args)]
 pub struct CompareArgs {
+    #[arg(long, value_name = "regression-signature")]
+    pub signature: String,
     #[arg(long, value_name = "path")]
     pub diff: Option<PathBuf>,
     #[arg(long, value_name = "path-or-name")]
@@ -36,34 +37,4 @@ pub struct CompareArgs {
     pub quiet: bool,
     #[arg(long, value_name = "text")]
     pub reason: Option<String>,
-}
-
-impl BratchCli {
-    pub fn run(self) -> Result<ExitCode, BratchError> {
-        match self.command {
-            Command::Compare(args) => compare::run(compare::CompareArgs {
-                diff: args.diff,
-                history: args.history,
-                manifest: args.manifest,
-                json: args.json,
-                quiet: args.quiet,
-                reason: args.reason,
-            }),
-            Command::Signatures => {
-                for sig in RegressionSignature::ALL {
-                    println!("{sig}");
-                }
-                Ok(ExitCode::SUCCESS)
-            }
-            Command::Update => placeholder("update"),
-            Command::Init => placeholder("init"),
-            Command::Tail => placeholder("tail"),
-            Command::Explain => placeholder("explain"),
-        }
-    }
-}
-
-fn placeholder(command_name: &str) -> Result<ExitCode, BratchError> {
-    println!("bratch {command_name} placeholder: behavior is deferred.");
-    Ok(ExitCode::SUCCESS)
 }

@@ -1,6 +1,6 @@
 {
   "name": "@booga/bratch",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Prompt lookup tool. Agent names a regression signature from a fixed list; bratch returns the prompt for that regression signature. The prompt tells the agent how to check the diff against a baseline for that regression.",
   "bin": {
     "bratch": "./bin/bratch.js"

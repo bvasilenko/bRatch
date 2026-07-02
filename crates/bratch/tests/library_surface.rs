@@ -1,14 +1,6 @@
 use bratch::{RegressionSignature, RevisionIdPair, VerdictClass, routing_key};
 use std::str::FromStr;
 
-struct PendingComparator;
-
-impl PendingComparator {
-    fn compare(&self) -> VerdictClass {
-        unimplemented!("not yet implemented")
-    }
-}
-
 #[test]
 fn library_reexports_public_contract_types() {
     assert_eq!(9, RegressionSignature::ALL.len());
@@ -22,9 +14,7 @@ fn routing_key_uses_bratch_core_entry_point() {
 }
 
 #[test]
-#[should_panic(expected = "not yet implemented")]
-fn placeholder_comparator_is_explicitly_pending() {
-    let comparator = PendingComparator;
-
-    let _ = comparator.compare();
+fn corpus_index_module_is_accessible_from_library() {
+    use bratch::corpus_index::RegressionSignatureCorpusIndex;
+    let _ = std::mem::size_of::<RegressionSignatureCorpusIndex>();
 }
